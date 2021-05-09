@@ -1,6 +1,7 @@
 package main
 
 import (
+	"MyVatsimCLI/data"
 	"MyVatsimCLI/services"
 	ui "github.com/gizak/termui"
 	"github.com/gizak/termui/widgets"
@@ -13,7 +14,7 @@ import (
 var utcZone, _ = time.LoadLocation("UTC")
 
 func main() {
-	var data = services.FetchCurrentData()
+	var data = getCurrentData()
 
 	// This is already in UTC, no need to convert
 	var nextUpdate = data.General.UpdateTimestamp.Add(time.Minute * 5)
@@ -65,8 +66,16 @@ func main() {
 			case "q", "<C-c>":
 				return
 			case "r", "<C-r>":
-				// TODO - Implement manual refresh.
-				return
+				manualRefreshData := getCurrentData()
+				p, _ = renderUi(
+					infoPanel(
+						nextUpdateTime(manualRefreshData.General.UpdateTimestamp),
+						manualRefreshData.GetConnectionsPerATCRating(),
+					),
+					table(),
+				)
+				nextUpdate = manualRefreshData.General.UpdateTimestamp.Add(time.Minute * 5)
+				updateTitle(p)
 			case "<Resize>":
 				payload := e.Payload.(ui.Resize)
 				grid.SetRect(0, 0, payload.Width, payload.Height)
@@ -75,7 +84,7 @@ func main() {
 			}
 		case <-ticker:
 			if time.Now().In(utcZone).After(nextUpdate) {
-				updatedData := services.FetchCurrentData()
+				updatedData := getCurrentData()
 				p, _ = renderUi(
 					infoPanel(
 						nextUpdateTime(updatedData.General.UpdateTimestamp),
@@ -132,6 +141,10 @@ func infoPanel(nextUpdateTime string, connections map[string]int) *widgets.Parag
 	p.BorderStyle.Fg = ui.ColorMagenta
 
 	return p
+}
+
+func getCurrentData() data.Datafile {
+	return services.FetchCurrentData()
 }
 
 func nextUpdateTime(providedTime time.Time) string {
