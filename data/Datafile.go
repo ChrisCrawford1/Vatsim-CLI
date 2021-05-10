@@ -2,6 +2,7 @@ package data
 
 import (
 	"errors"
+	"sort"
 	"time"
 )
 
@@ -127,6 +128,16 @@ type GeneralInfo struct {
 	UniqueUsers      int
 }
 
+type Airfields struct {
+	Departures []AirfieldStat
+	Arrivals   []AirfieldStat
+}
+
+type AirfieldStat struct {
+	Icao  string
+	Count int
+}
+
 func (d *Datafile) GetGeneralInfo() GeneralInfo {
 	return GeneralInfo{
 		ConnectedClients: d.General.ConnectedClients,
@@ -167,4 +178,46 @@ func (d *Datafile) name(ratingInt int) (string, error) {
 	}
 
 	return "", errors.New("could not match to a rating")
+}
+
+func (d *Datafile) GetPopularAirfields() Airfields {
+	departures := []AirfieldStat{}
+
+	for _, item := range d.Pilots {
+		flightplan := item.FlightPlan
+
+		if flightplan == nil {
+			continue
+		}
+
+		result, i := airfieldInStructure(flightplan.Departure, departures)
+
+		if !result {
+			departures = append(departures, AirfieldStat{
+				Icao:  flightplan.Departure,
+				Count: 1,
+			})
+			continue
+		}
+
+		if result {
+			departures[i].Count++
+		}
+	}
+
+	sort.Slice(departures, func(i, j int) bool { return departures[i].Count > departures[j].Count })
+
+	return Airfields{
+		Departures: departures,
+		Arrivals:   nil,
+	}
+}
+
+func airfieldInStructure(icao string, airfields []AirfieldStat) (bool, int) {
+	for i, airfield := range airfields {
+		if airfield.Icao == icao {
+			return true, i
+		}
+	}
+	return false, 0
 }

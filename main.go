@@ -49,7 +49,7 @@ func main() {
 
 	p, _ := renderUi(
 		infoPanel(nextUpdateTime(data.General.UpdateTimestamp), data.GetConnectionsPerATCRating()),
-		table(),
+		table(&data),
 	)
 
 	updateTitle := func(p *widgets.Paragraph) {
@@ -72,7 +72,7 @@ func main() {
 						nextUpdateTime(manualRefreshData.General.UpdateTimestamp),
 						manualRefreshData.GetConnectionsPerATCRating(),
 					),
-					table(),
+					table(&manualRefreshData),
 				)
 				nextUpdate = manualRefreshData.General.UpdateTimestamp.Add(time.Minute * 5)
 				updateTitle(p)
@@ -90,7 +90,7 @@ func main() {
 						nextUpdateTime(updatedData.General.UpdateTimestamp),
 						updatedData.GetConnectionsPerATCRating(),
 					),
-					table(),
+					table(&updatedData),
 				)
 				nextUpdate = updatedData.General.UpdateTimestamp.Add(time.Minute * 5)
 				updateTitle(p)
@@ -103,13 +103,23 @@ func main() {
 	}
 }
 
-func table() *widgets.Table {
+func table(data *data.Datafile) *widgets.Table {
 	dataTable := widgets.NewTable()
-	dataTable.Rows = [][]string{
-		[]string{"Departures", "Arrivals", "Aircraft"},
-		[]string{"EBBR", "EGPH", "B738"},
+	var rows [][]string
+
+	rows = append(rows, []string{"Departures", "Arrivals"})
+
+	for _, departure := range data.GetPopularAirfields().Departures[0:5] {
+		rows = append(rows, []string{
+			departure.Icao + ":" + strconv.Itoa(departure.Count),
+			"TBD: 0",
+		})
 	}
-	dataTable.TextStyle = ui.NewStyle(ui.ColorWhite)
+
+	dataTable.Rows = rows
+	dataTable.TextStyle = ui.NewStyle(ui.ColorCyan)
+	dataTable.Title = "Most Popular Airfields"
+	dataTable.BorderStyle.Fg = ui.ColorGreen
 	dataTable.SetRect(20, 2, 100, 10)
 
 	return dataTable
