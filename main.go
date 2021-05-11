@@ -14,10 +14,10 @@ import (
 var utcZone, _ = time.LoadLocation("UTC")
 
 func main() {
-	var data = getCurrentData()
+	var pulledData = getCurrentData()
 
 	// This is already in UTC, no need to convert
-	var nextUpdate = data.General.UpdateTimestamp.Add(time.Minute * 5)
+	var nextUpdate = pulledData.General.UpdateTimestamp.Add(time.Minute * 5)
 
 	if err := ui.Init(); err != nil {
 		log.Fatalf("failed to initialize termui: %v", err)
@@ -48,8 +48,8 @@ func main() {
 	}
 
 	p, _ := renderUi(
-		infoPanel(nextUpdateTime(data.General.UpdateTimestamp), data.GetConnectionsPerATCRating()),
-		table(&data),
+		infoPanel(nextUpdateTime(pulledData.General.UpdateTimestamp), pulledData.GetConnectionsPerATCRating()),
+		table(&pulledData),
 	)
 
 	updateTitle := func(p *widgets.Paragraph) {
@@ -108,11 +108,14 @@ func table(data *data.Datafile) *widgets.Table {
 	var rows [][]string
 
 	rows = append(rows, []string{"Departures", "Arrivals"})
+	airfields := data.GetPopularAirfields()
+	departures := airfields.Departures[0:5]
+	arrivals := airfields.Arrivals[0:5]
 
-	for _, departure := range data.GetPopularAirfields().Departures[0:5] {
+	for i, departure := range departures {
 		rows = append(rows, []string{
 			departure.Icao + ":" + strconv.Itoa(departure.Count),
-			"TBD: 0",
+			arrivals[i].Icao + ":" + strconv.Itoa(arrivals[i].Count),
 		})
 	}
 

@@ -2,6 +2,7 @@ package data
 
 import (
 	"errors"
+	"reflect"
 	"sort"
 	"time"
 )
@@ -181,7 +182,14 @@ func (d *Datafile) name(ratingInt int) (string, error) {
 }
 
 func (d *Datafile) GetPopularAirfields() Airfields {
-	departures := []AirfieldStat{}
+	return Airfields{
+		Departures: d.GetPopularForFilter("Departure"),
+		Arrivals:   d.GetPopularForFilter("Arrival"),
+	}
+}
+
+func (d *Datafile) GetPopularForFilter(filter string) []AirfieldStat {
+	airfields := []AirfieldStat{}
 
 	for _, item := range d.Pilots {
 		flightplan := item.FlightPlan
@@ -190,27 +198,28 @@ func (d *Datafile) GetPopularAirfields() Airfields {
 			continue
 		}
 
-		result, i := airfieldInStructure(flightplan.Departure, departures)
+		reflectedValue := reflect.ValueOf(flightplan)
+		reflectedValue = reflectedValue.Elem()
+		fieldValue := reflectedValue.FieldByName(filter).String()
+
+		result, i := airfieldInStructure(fieldValue, airfields)
 
 		if !result {
-			departures = append(departures, AirfieldStat{
-				Icao:  flightplan.Departure,
+			airfields = append(airfields, AirfieldStat{
+				Icao:  fieldValue,
 				Count: 1,
 			})
 			continue
 		}
 
 		if result {
-			departures[i].Count++
+			airfields[i].Count++
 		}
 	}
 
-	sort.Slice(departures, func(i, j int) bool { return departures[i].Count > departures[j].Count })
+	sort.Slice(airfields, func(i, j int) bool { return airfields[i].Count > airfields[j].Count })
 
-	return Airfields{
-		Departures: departures,
-		Arrivals:   nil,
-	}
+	return airfields
 }
 
 func airfieldInStructure(icao string, airfields []AirfieldStat) (bool, int) {
